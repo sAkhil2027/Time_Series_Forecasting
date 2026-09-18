@@ -31,3 +31,27 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/api/health", tags=["Health"])
+def health_check():
+    return {
+        "status": "healthy",
+        "service": "Deep Learning Time Series Forecasting",
+        "version": "1.0.0"
+    }
+
+@app.get("/api/metadata")
+def api_metadata():
+    metrics = get_metrics()
+    return {
+        "stores": list(range(1, 11)),
+        "items": list(range(1, 51)),
+        "models": [
+            {"id": "LSTM", "name": "LSTM Network", "type": "Recurrent", "val_rmse": metrics.get("LSTM", {}).get("val_rmse", 18.76)},
+            {"id": "CNN-LSTM", "name": "CNN-LSTM Hybrid", "type": "Hybrid Spatiotemporal", "val_rmse": metrics.get("CNN-LSTM", {}).get("val_rmse", 19.17)},
+            {"id": "CNN", "name": "1D CNN", "type": "Convolutional", "val_rmse": metrics.get("CNN", {}).get("val_rmse", 18.76)},
+            {"id": "MLP", "name": "MLP Baseline", "type": "Dense Feedforward", "val_rmse": metrics.get("MLP", {}).get("val_rmse", 18.50)}
+        ],
+        "default_horizon": 30,
+        "max_horizon": 90
+    }
