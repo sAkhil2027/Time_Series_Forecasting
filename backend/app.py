@@ -65,3 +65,40 @@ def api_history(store_id: int = Query(1, ge=1, le=10), item_id: int = Query(1, g
         return {"store_id": store_id, "item_id": item_id, "days": days, "data": history}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+from pydantic import BaseModel
+from backend.inference import run_forecast, compare_all_models
+
+class ForecastRequest(BaseModel):
+    store_id: int = 1
+    item_id: int = 1
+    model_name: str = "LSTM"
+    horizon: int = 30
+
+class CompareRequest(BaseModel):
+    store_id: int = 1
+    item_id: int = 1
+    horizon: int = 30
+
+@app.post("/api/forecast")
+def api_forecast(req: ForecastRequest):
+    try:
+        result = run_forecast(req.store_id, req.item_id, req.model_name, req.horizon)
+        return result
+    except FileNotFoundError as fnf:
+        raise HTTPException(status_code=503, detail=f"Model not ready: {str(fnf)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/compare")
+def api_compare(req: CompareRequest):
+    try:
+        results = compare_all_models(req.store_id, req.item_id, req.horizon)
+        return {
+            "store_id": req.store_id,
+            "item_id": req.item_id,
+            "horizon": req.horizon,
+            "comparisons": results
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
