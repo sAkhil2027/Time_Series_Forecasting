@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deep Learning Time Series Forecasting | Neural Sales Intelligence</title>
+  <meta name="description" content="Interactive deep learning time-series sales forecasting dashboard powered by LSTM, CNN, and CNN-LSTM models.">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-icon">
+        <span>⚡</span>
+      </div>
+      <div class="brand-text">
+        <h1>ChronosDeep</h1>
+        <p>Deep Learning Time Series Demand Forecasting</p>
+      </div>
+    </div>
+    <div class="nav-actions">
+      <div class="badge">
+        <span class="badge-dot"></span>
+        <span>Neural Inference Ready</span>
+      </div>
+      <button class="btn btn-secondary" id="btnOpenUpload" style="padding: 0.5rem 0.9rem; font-size: 0.8rem;">
+        📂 Upload Custom CSV
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="dashboard-container">
+    
+    <!-- Sidebar Control Panel -->
+    <aside class="sidebar-panel glass">
+      <div class="panel-title">
+        <span>⚙️ Forecast Parameters</span>
+        <div id="loadingSpinner" class="spinner hidden" style="margin-left: auto;"></div>
+      </div>
+
+      <!-- Store Selector -->
+      <div class="control-group">
+        <label for="storeSelect" class="control-label">Retail Store</label>
+        <select id="storeSelect">
+          <!-- Populated dynamically -->
+        </select>
+      </div>
+
+      <!-- Item Selector -->
+      <div class="control-group">
+        <label for="itemSelect" class="control-label">Product Item</label>
+        <select id="itemSelect">
+          <!-- Populated dynamically -->
+        </select>
+      </div>
+
+      <!-- Deep Learning Architecture Selector -->
+      <div class="control-group">
+        <label class="control-label">Neural Architecture</label>
+        <div class="model-grid">
+          <div class="model-card active" data-model="LSTM">
+            <div class="model-name">LSTM</div>
+            <div class="model-sub">Recurrent Memory</div>
+          </div>
+          <div class="model-card" data-model="CNN-LSTM">
+            <div class="model-name">CNN-LSTM</div>
+            <div class="model-sub">Hybrid Network</div>
+          </div>
+          <div class="model-card" data-model="CNN">
+            <div class="model-name">1D CNN</div>
+            <div class="model-sub">Convolutional</div>
+          </div>
+          <div class="model-card" data-model="MLP">
+            <div class="model-name">MLP</div>
+            <div class="model-sub">Feedforward</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Horizon Slider -->
+      <div class="control-group slider-container">
+        <div class="control-label">
+          <span>Forecast Horizon</span>
+          <span class="value-pill" id="horizonValue">30 Days</span>
+        </div>
+        <input type="range" id="horizonSlider" min="7" max="90" value="30" step="1">
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+        <button class="btn btn-primary" id="btnCompare">
+          📊 Compare All 4 Models
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Forecasting Stage -->
+    <section class="main-stage">
+      
+      <!-- Error Message Banner -->
+      <div id="errorAlert" class="glass hidden" style="padding: 0.9rem 1.25rem; border-color: rgba(244, 63, 94, 0.4); background: rgba(244, 63, 94, 0.1); color: #fecdd3; font-size: 0.85rem;">
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="kpi-row">
+        <div class="kpi-card glass">
+          <span class="kpi-label">Projected Demand</span>
+          <div class="kpi-value" id="kpiTotal">--</div>
+          <span class="kpi-sub">Total forecast horizon sales</span>
+        </div>
+        <div class="kpi-card glass">
+          <span class="kpi-label">Daily Average</span>
+          <div class="kpi-value" id="kpiAvg">--</div>
+          <span class="kpi-sub">Expected units per day</span>
+        </div>
+        <div class="kpi-card glass">
+          <span class="kpi-label">Peak Demand Date</span>
+          <div class="kpi-value" id="kpiPeak" style="font-size: 1.3rem;">--</div>
+          <span class="kpi-sub">Highest projected surge</span>
+        </div>
+        <div class="kpi-card glass">
+          <span class="kpi-label">Model Validation RMSE</span>
+          <div class="kpi-value" id="kpiRmse" style="color: var(--accent-emerald);">--</div>
+          <span class="kpi-sub">Out-of-sample error</span>
+        </div>
+      </div>
+
+      <!-- Chart Display Section -->
+      <div class="chart-section glass">
+        <div class="chart-header">
+          <div class="chart-title-box">
+            <h2>Sales Trajectory & Forecast Projection</h2>
+            <p>Solid curve indicates historical sales; dashed curve shows neural sequence forecast</p>
+          </div>
+        </div>
+        <div class="chart-canvas-wrapper">
+          <canvas id="salesChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Model Comparison Table -->
+      <div id="comparisonWrapper" class="comparison-section glass hidden">
+        <div class="panel-title">
+          <span>🔬 Multi-Architecture Benchmark Comparison</span>
+        </div>
+        <div class="comparison-table-wrapper">
+          <table class="comp-table">
+            <thead>
+              <tr>
+                <th>Model Architecture</th>
+                <th>Description</th>
+                <th>Validation RMSE</th>
+                <th>Projected Total</th>
+                <th>Daily Average</th>
+              </tr>
+            </thead>
+            <tbody id="comparisonTableBody">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Custom CSV Upload Modal -->
+  <div class="modal-overlay" id="uploadModal">
+    <div class="modal-content glass">
+      <div class="modal-header">
+        <h3>Upload Custom Sales Data</h3>
+        <button class="close-btn" id="btnCloseUpload">&times;</button>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-secondary);">
+        Upload a CSV file containing at least 30 consecutive sales values in a <code>sales</code> column. The active neural model will project future demand automatically.
+      </p>
+      <div class="upload-dropzone" id="uploadDropzone">
+        <div class="dropzone-icon">📈</div>
+        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Choose CSV file</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">Supports .csv format with headers</div>
+        <input type="file" id="csvFileInput" accept=".csv" class="hidden">
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
