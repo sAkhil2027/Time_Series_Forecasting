@@ -1,7 +1,7 @@
 import os
 import json
-import numpy as np
 from datetime import timedelta
+import numpy as np
 import pandas as pd
 import tensorflow as tf
 
@@ -9,6 +9,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(BASE_DIR, 'train.csv')
 SAVED_MODELS_DIR = os.path.join(BASE_DIR, 'saved_models')
 
+# In-memory caches
 _models = {}
 _data_cache = None
 _metrics_cache = None
@@ -34,6 +35,7 @@ def get_data():
     if _data_cache is None:
         print("[Inference] Loading sales dataset into memory...")
         df = pd.read_csv(DATA_PATH, parse_dates=['date'])
+        # Keep only necessary columns and recent slice for responsiveness
         recent_df = df[df['date'] >= '2016-01-01'].copy()
         _data_cache = recent_df.sort_values('date')
     return _data_cache
@@ -56,7 +58,7 @@ def load_model_cached(model_name: str):
 
     model_file = os.path.join(SAVED_MODELS_DIR, filename_map[model_name])
     if not os.path.exists(model_file):
-        raise FileNotFoundError(f"Model file not found at {model_file}.")
+        raise FileNotFoundError(f"Model file not found at {model_file}. Has training completed?")
 
     print(f"[Inference] Loading model {model_name} from {model_file}...")
     model = tf.keras.models.load_model(model_file)
@@ -64,6 +66,7 @@ def load_model_cached(model_name: str):
     return model
 
 def format_input_for_model(sequence_30: np.ndarray, model_name: str) -> np.ndarray:
+    """Format a 30-step sequence into the required tensor shape for the model."""
     arr = np.array(sequence_30, dtype=np.float32).reshape(1, 30)
     model_name = model_name.upper().replace('_', '-')
 
@@ -72,6 +75,7 @@ def format_input_for_model(sequence_30: np.ndarray, model_name: str) -> np.ndarr
     elif model_name in ['CNN', 'LSTM']:
         return arr.reshape((1, 30, 1))
     elif model_name == 'CNN-LSTM':
+        # 30 timesteps -> 2 subsequences of 15 timesteps each
         return arr.reshape((1, 2, 15, 1))
     else:
         raise ValueError(f"Unknown model name: {model_name}")
@@ -80,7 +84,7 @@ def predict_single_step(model, sequence_30: np.ndarray, model_name: str) -> floa
     inp = format_input_for_model(sequence_30, model_name)
     pred = model(inp, training=False).numpy()
     val = float(pred[0][0])
-    return max(0.0, val)
+    return max(0.0, val) # Sales cannot be negative
 
 def get_store_item_history(store_id: int, item_id: int, days: int = 90):
     df = get_data()
@@ -98,6 +102,9 @@ def get_store_item_history(store_id: int, item_id: int, days: int = 90):
     return records
 
 def run_forecast(store_id: int, item_id: int, model_name: str, horizon: int = 30):
+    """
+    Generates multi-day future predictions using rolling autoregression.
+    """
     df = get_data()
     sub = df[(df['store'] == store_id) & (df['item'] == item_id)].sort_values('date')
     if len(sub) < 30:
@@ -118,6 +125,7 @@ def run_forecast(store_id: int, item_id: int, model_name: str, horizon: int = 30
             'date': step_date.strftime('%Y-%m-%d'),
             'sales': round(pred_val, 2)
         })
+        # Slide window
         curr_window.append(pred_val)
 
     return {
@@ -134,6 +142,9 @@ def run_forecast(store_id: int, item_id: int, model_name: str, horizon: int = 30
     }
 
 def compare_all_models(store_id: int, item_id: int, horizon: int = 30):
+    """
+    Runs forecast across all 4 architectures on identical historical input.
+    """
     models = ['MLP', 'CNN', 'LSTM', 'CNN-LSTM']
     results = {}
     metrics = get_metrics()
@@ -155,3 +166,30 @@ def compare_all_models(store_id: int, item_id: int, horizon: int = 30):
             }
 
     return results
+
+def forecast_custom_sequence(sequence_30: list, model_name: str, horizon: int = 30):
+    """Forecast future values from custom user sequence of 30 days."""
+    if len(sequence_30) < 30:
+        raise ValueError("Must provide at least 30 historical values")
+
+    model = load_model_cached(model_name)
+    curr_window = list(sequence_30[-30:])
+    forecast_points = []
+
+    for step in range(1, horizon + 1):
+        pred_val = predict_single_step(model, np.array(curr_window[-30:]), model_name)
+        forecast_points.append({
+            'step': step,
+            'sales': round(pred_val, 2)
+        })
+        curr_window.append(pred_val)
+
+    return {
+        'model': model_name,
+        'horizon': horizon,
+        'forecast': forecast_points,
+        'summary': {
+            'total_projected_sales': round(sum(p['sales'] for p in forecast_points), 1),
+            'avg_daily_sales': round(np.mean([p['sales'] for p in forecast_points]), 2)
+        }
+    }
