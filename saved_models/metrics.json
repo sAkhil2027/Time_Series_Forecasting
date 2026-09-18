@@ -1,0 +1,18 @@
+{
+  "MLP": {
+    "val_rmse": 18.75,
+    "description": "Multilayer Perceptron (Dense Feedforward)"
+  },
+  "CNN": {
+    "val_rmse": 18.96,
+    "description": "1D Convolutional Neural Network"
+  },
+  "LSTM": {
+    "val_rmse": 18.99,
+    "description": "Long Short-Term Memory Network"
+  },
+  "CNN-LSTM": {
+    "val_rmse": 19.55,
+    "description": "Hybrid TimeDistributed CNN-LSTM"
+  }
+}
