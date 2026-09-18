@@ -1,6 +1,6 @@
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from backend.inference import get_metrics, get_data, load_model_cached
 
@@ -55,3 +55,13 @@ def api_metadata():
         "default_horizon": 30,
         "max_horizon": 90
     }
+
+from backend.inference import get_store_item_history
+
+@app.get("/api/history")
+def api_history(store_id: int = Query(1, ge=1, le=10), item_id: int = Query(1, ge=1, le=50), days: int = Query(90, ge=30, le=365)):
+    try:
+        history = get_store_item_history(store_id, item_id, days)
+        return {"store_id": store_id, "item_id": item_id, "days": days, "data": history}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
