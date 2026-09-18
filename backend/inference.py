@@ -1,6 +1,7 @@
 import os
 import json
 import numpy as np
+from datetime import timedelta
 import pandas as pd
 import tensorflow as tf
 
@@ -80,3 +81,77 @@ def predict_single_step(model, sequence_30: np.ndarray, model_name: str) -> floa
     pred = model(inp, training=False).numpy()
     val = float(pred[0][0])
     return max(0.0, val)
+
+def get_store_item_history(store_id: int, item_id: int, days: int = 90):
+    df = get_data()
+    sub = df[(df['store'] == store_id) & (df['item'] == item_id)].sort_values('date')
+    if len(sub) == 0:
+        return []
+    
+    recent = sub.tail(days)
+    records = []
+    for _, row in recent.iterrows():
+        records.append({
+            'date': row['date'].strftime('%Y-%m-%d'),
+            'sales': float(row['sales'])
+        })
+    return records
+
+def run_forecast(store_id: int, item_id: int, model_name: str, horizon: int = 30):
+    df = get_data()
+    sub = df[(df['store'] == store_id) & (df['item'] == item_id)].sort_values('date')
+    if len(sub) < 30:
+        raise ValueError(f"Insufficient historical data for Store {store_id}, Item {item_id}")
+
+    last_30_records = sub.tail(30)
+    window = list(last_30_records['sales'].values)
+    last_date = last_30_records['date'].max()
+
+    model = load_model_cached(model_name)
+    forecast_points = []
+    curr_window = list(window)
+
+    for step in range(1, horizon + 1):
+        step_date = last_date + timedelta(days=step)
+        pred_val = predict_single_step(model, np.array(curr_window[-30:]), model_name)
+        forecast_points.append({
+            'date': step_date.strftime('%Y-%m-%d'),
+            'sales': round(pred_val, 2)
+        })
+        curr_window.append(pred_val)
+
+    return {
+        'model': model_name,
+        'store_id': store_id,
+        'item_id': item_id,
+        'horizon': horizon,
+        'forecast': forecast_points,
+        'summary': {
+            'total_projected_sales': round(sum(p['sales'] for p in forecast_points), 1),
+            'avg_daily_sales': round(np.mean([p['sales'] for p in forecast_points]), 2),
+            'peak_day': max(forecast_points, key=lambda x: x['sales'])['date'] if forecast_points else None
+        }
+    }
+
+def compare_all_models(store_id: int, item_id: int, horizon: int = 30):
+    models = ['MLP', 'CNN', 'LSTM', 'CNN-LSTM']
+    results = {}
+    metrics = get_metrics()
+
+    for m in models:
+        try:
+            fc = run_forecast(store_id, item_id, m, horizon)
+            results[m] = {
+                'forecast': fc['forecast'],
+                'summary': fc['summary'],
+                'val_rmse': metrics.get(m, {}).get('val_rmse', 'N/A'),
+                'description': metrics.get(m, {}).get('description', '')
+            }
+        except Exception as e:
+            results[m] = {
+                'error': str(e),
+                'val_rmse': metrics.get(m, {}).get('val_rmse', 'N/A'),
+                'description': metrics.get(m, {}).get('description', '')
+            }
+
+    return results
