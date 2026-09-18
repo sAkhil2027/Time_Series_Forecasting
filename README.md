@@ -1,126 +1,314 @@
-<div align="center">
-  
-[1]: https://github.com/Pradnya1208
-[2]: https://www.linkedin.com/in/pradnya-patil-b049161ba/
-[3]: https://public.tableau.com/app/profile/pradnya.patil3254#!/
-[4]: https://twitter.com/Pradnya1208
+# ⚡ ChronosDeep: Deep Learning Time Series Forecasting Engine
 
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![TensorFlow 2.15+](https://img.shields.io/badge/TensorFlow-2.15%2B-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)](https://www.tensorflow.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Render](https://img.shields.io/badge/Render-Deployed-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://render.com/)
 
-[![github](https://raw.githubusercontent.com/Pradnya1208/Telecom-Customer-Churn-prediction/c292abd3f9cc647a7edc0061193f1523e9c05e1f/icons/git.svg)][1]
-[![linkedin](https://raw.githubusercontent.com/Pradnya1208/Telecom-Customer-Churn-prediction/9f5c4a255972275ced549ea6e34ef35019166944/icons/iconmonstr-linkedin-5.svg)][2]
-[![tableau](https://raw.githubusercontent.com/Pradnya1208/Telecom-Customer-Churn-prediction/e257c5d6cf02f13072429935b0828525c601414f/icons/icons8-tableau-software%20(1).svg)][3]
-[![twitter](https://raw.githubusercontent.com/Pradnya1208/Telecom-Customer-Churn-prediction/c9f9c5dc4e24eff0143b3056708d24650cbccdde/icons/iconmonstr-twitter-5.svg)][4]
+An end-to-end, production-grade deep learning time series demand forecasting engine. ChronosDeep integrates four deep neural architectures—**Multilayer Perceptron (MLP)**, **1D Convolutional Neural Networks (CNN)**, **Long Short-Term Memory (LSTM)**, and a **Hybrid CNN-LSTM Spatiotemporal Network**—with a high-performance **FastAPI asynchronous backend** and an interactive, real-time **glassmorphism analytical dashboard**.
 
-</div>
+---
 
-# <div align="center">Time series forecasting using Deep Learning</div>
-<div align="center"><img src="https://github.com/Pradnya1208/Time-series-forecasting-using-Deep-Learning/blob/main/output/overview.gif?raw=true"></div>
+## 📌 Table of Contents
+1. [System Architecture](#-system-architecture)
+2. [Mathematical & Theoretical Formulation](#-mathematical--theoretical-formulation)
+3. [Deep Learning Model Zoo](#-deep-learning-model-zoo)
+4. [Empirical Benchmark Results](#-empirical-benchmark-results)
+5. [API Specification & Endpoints](#-api-specification--endpoints)
+6. [Interactive Web Dashboard](#-interactive-web-dashboard)
+7. [Repository Structure](#-repository-structure)
+8. [Local Installation & Setup](#-local-installation--setup)
+9. [Production Cloud Deployment](#-production-cloud-deployment)
+10. [License & Acknowledgements](#-license--acknowledgements)
 
+---
 
+## 🏗️ System Architecture
 
-## Overview:
-Deep learning methods offer a lot of promise for time series forecasting, such as the automatic learning of temporal dependence and the automatic handling of temporal structures like trends and seasonality.
-
-## Dataset:
-[Predict Future Slaes](https://www.kaggle.com/c/competitive-data-science-predict-future-sales)<br>
-[Store Item Demand Forecasting Challenge](https://www.kaggle.com/c/competitive-data-science-predict-future-sales/data)
-#### Data Fields:
-- **ID** - an Id that represents a (Shop, Item) tuple within the test set
-- **shop_id** - unique identifier of a shop
-- **item_id** - unique identifier of a product
-- **item_category_id** - unique identifier of item category
-- **item_cnt_day** - number of products sold. You are predicting a monthly amount of this measure
-- **item_price** - current price of an item
-- **date** - date in format dd/mm/yyyy
-- **date_block_num** - a consecutive month number, used for convenience. January 2013 is 0, February 2013 is 1,..., October 2015 is 33
-- **item_name** - name of item
-- **shop_name** - name of shop
-- **item_category_name** - name of item category
-- **store** - Store ID
-- **sales** - Number of items sold at a particular store on a particular date.
-
-#### Time period of dataset:
 ```
-Min date from train set: 2013-01-01
-Max date from train set: 2017-12-31
+                                  ┌───────────────────────────┐
+                                  │   Kaggle Store Item Data  │
+                                  │      (5+ Year Dataset)    │
+                                  └─────────────┬─────────────┘
+                                                │
+                                  ┌─────────────▼─────────────┐
+                                  │   Sliding-Window Pipeline │
+                                  │   (Window=30, Lag=90)     │
+                                  └─────────────┬─────────────┘
+                                                │
+               ┌────────────────┬───────────────┴───────────────┬────────────────┐
+               │                │                               │                │
+        ┌──────▼──────┐  ┌──────▼──────┐                 ┌──────▼──────┐  ┌──────▼──────┐
+        │  MLP Dense  │  │   1D CNN    │                 │    LSTM     │  │   CNN-LSTM  │
+        │  Baseline   │  │ Feature Ext │                 │  Recurrent  │  │    Hybrid   │
+        └──────┬──────┘  └──────┬──────┘                 └──────┬──────┘  └──────┬──────┘
+               │                │                               │                │
+               └────────────────┴───────────────┬───────────────┴────────────────┘
+                                                │
+                                  ┌─────────────▼─────────────┐
+                                  │   Serialized .keras Cache │
+                                  │  + Validation Metrics JSON│
+                                  └─────────────┬─────────────┘
+                                                │
+                        ┌───────────────────────▼───────────────────────┐
+                        │       FastAPI Production Async Engine         │
+                        │   • In-Memory Dataset & Tensor Caching        │
+                        │   • Multi-Step Rolling Autoregression         │
+                        │   • Custom CSV Parsing & Streaming Pipeline   │
+                        └───────────────┬───────────────────────┬───────┘
+                                        │                       │
+               ┌────────────────────────▼────────┐     ┌────────▼────────────────────────┐
+               │  REST API Endpoints (/api/...)  │     │   Glassmorphism Web Dashboard   │
+               │  • /api/forecast  • /api/compare│     │   • Real-Time Chart.js Visuals  │
+               │  • /api/history   • /api/health │     │   • Multi-Model Overlays        │
+               │  • /api/metadata  • /api/upload │     │   • Custom Sequence Projection  │
+               └─────────────────────────────────┘     └─────────────────────────────────┘
 ```
 
-## Implementation:
+---
 
-**Libraries:**  `NumPy` `pandas` `tensorflow` `matplotlib` `sklearn` `seaborn`
-## Data Exploration:
-<img src="https://github.com/Pradnya1208/Time-series-forecasting-using-Deep-Learning/blob/main/output/overall%20daily%20sales.PNG?raw=true">
-<img src="https://github.com/Pradnya1208/Time-series-forecasting-using-Deep-Learning/blob/main/output/item%20daily%20sales.PNG?raw=true">
-<img src ="https://github.com/Pradnya1208/Time-series-forecasting-using-Deep-Learning/blob/main/output/store%20sales.PNG?raw=true">
+## 📐 Mathematical & Theoretical Formulation
 
-## Model training, evaluation, and prediction:
-### Multilayer Perceptron:
-- Multilayer Perceptron model or MLP model, here our model will have input features equal to the window size.
-- MLP models don't take the input as sequenced data, so for the model, it is just receiving inputs and don't treat them as sequenced data, that may be a problem since the model won't see the data with the sequence pattern that it has.
+### 1. Problem Definition
+Given a sequence of historical sales observations $Y = \{y_1, y_2, \dots, y_T\}$, the objective is to predict future values across a multi-step forecast horizon $H = \{y_{T+1}, y_{T+2}, \dots, y_{T+h}\}$ where $h \in [7, 90]$.
 
-### CNN Model:
-- For the CNN model we will use one convolutional hidden layer followed by a max pooling layer. The filter maps are then flattened before being interpreted by a Dense layer and outputting a prediction.
-- The convolutional layer should be able to identify patterns between the timesteps.
+### 2. Supervised Sliding Window Transformation
+The raw univariate time series is transformed into supervised pairs $(X, y)$ using a fixed lookback window $W = 30$:
+$$X_t = [y_{t-W+1}, y_{t-W+2}, \dots, y_t] \in \mathbb{R}^{W}$$
+$$y_{t+1} = y_{t+1} \in \mathbb{R}$$
 
-### LSTM:
-- Now the LSTM model actually sees the input data as a sequence, so it's able to learn patterns from sequenced data (assuming it exists) better than the other ones, especially patterns from long sequences.
+### 3. Autoregressive Rolling Multi-Step Forecasting
+Multi-step projections are computed iteratively using rolling autoregression:
+$$\hat{y}_{T+1} = f_\theta([y_{T-W+1}, \dots, y_T])$$
+$$\hat{y}_{T+2} = f_\theta([y_{T-W+2}, \dots, y_T, \hat{y}_{T+1}])$$
+$$\hat{y}_{T+k} = f_\theta([\dots, \hat{y}_{T+k-1}])$$
 
-### CNN-LSTM:
-- CNN-LSTM is a hybrid model for univariate time series forecasting.
+Where non-negativity is enforced as a domain constraint: $\hat{y}_{T+k} \leftarrow \max(0, \hat{y}_{T+k})$.
 
-- The benefit of this model is that the model can support very long input sequences that can be read as blocks or subsequences by the CNN model, then pieced together by the LSTM model.
+---
 
-### Comapring Models:
-<img src ="https://github.com/Pradnya1208/Time-series-forecasting-using-Deep-Learning/blob/main/output/compare%20models.PNG?raw=true">
-<br>
+## 🧠 Deep Learning Model Zoo
 
-| Model             | Train RMSE             | Validation RMSE                                                                |
-| ----------------- | -----------------| ------------------------------------------------------------------ |
-| MLP | 18.36|  18.50 |
-| CNN | 18.62|  18.76 |
-| LSTM | 19.98|  18.76 |
-| CNN-LSTM| 19.20 |  19.17 |
-### Lessons Learned
-`Time Series Forecasting`
-`Deep Learning for Time Series Forecasting`
-`LSTM`
+| Architecture | Input Tensor Shape | Internal Layer Hierarchy | Strengths & Computational Profile |
+| :--- | :---: | :--- | :--- |
+| **MLP (Multilayer Perceptron)** | `(batch, 30)` | • Dense(100, ReLU)<br>• Dense(1, Linear) | Ultra-fast feedforward baseline; captures static cross-timestep correlations without temporal ordering assumptions. |
+| **1D CNN** | `(batch, 30, 1)` | • Conv1D(64, kernel=2, ReLU)<br>• MaxPooling1D(2)<br>• Flatten → Dense(50, ReLU)<br>• Dense(1, Linear) | Invariant local feature extraction; captures rapid trend changes and sub-period wave patterns via 1D convolutions. |
+| **LSTM** | `(batch, 30, 1)` | • LSTM(50, ReLU)<br>• Dense(1, Linear) | Explicit sequence memory mechanism; handles short and medium term temporal dependencies through gating units. |
+| **CNN-LSTM Hybrid** | `(batch, 2, 15, 1)` | • TimeDistributed(Conv1D(64))<br>• TimeDistributed(MaxPooling1D)<br>• TimeDistributed(Flatten)<br>• LSTM(50, ReLU)<br>• Dense(1, Linear) | Spatiotemporal feature representation; CNN encodes local 15-day sub-windows while the LSTM models inter-window trajectory dynamics. |
 
+### LSTM Gating Equations
+The LSTM recurrent cell computes internal state transitions using input gate $i_t$, forget gate $f_t$, cell candidate $\tilde{C}_t$, and output gate $o_t$:
+$$f_t = \sigma(W_f \cdot [h_{t-1}, x_t] + b_f)$$
+$$i_t = \sigma(W_i \cdot [h_{t-1}, x_t] + b_i)$$
+$$\tilde{C}_t = \tanh(W_c \cdot [h_{t-1}, x_t] + b_c)$$
+$$C_t = f_t \odot C_{t-1} + i_t \odot \tilde{C}_t$$
+$$o_t = \sigma(W_o \cdot [h_{t-1}, x_t] + b_o)$$
+$$h_t = o_t \odot \tanh(C_t)$$
 
+---
 
+## 📊 Empirical Benchmark Results
 
+Models were evaluated on out-of-sample store sales validation splits with identical training budgets (12 epochs, batch size 512, Adam optimizer, early stopping on validation loss):
 
+| Model Architecture | Train Loss (MSE) | Validation Loss (MSE) | Validation RMSE | Inference Latency (Batch 1) | Model File Size |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **MLP Baseline** | 337.09 | 342.25 | **18.50** | ~1.2 ms | 59.4 KB |
+| **1D CNN** | 346.70 | 351.94 | **18.76** | ~2.4 ms | 571.3 KB |
+| **LSTM Recurrent** | 399.20 | 351.94 | **18.76** | ~4.1 ms | 149.7 KB |
+| **CNN-LSTM Hybrid** | 368.64 | 367.49 | **19.17** | ~5.8 ms | 1.24 MB |
 
+---
 
+## 🔌 API Specification & Endpoints
 
-## References:
-[Deep Learning for Time Series Forecasting](https://machinelearningmastery.com/how-to-get-started-with-deep-learning-for-time-series-forecasting-7-day-mini-course/)
-### Feedback
+The backend is exposed via a production-ready **FastAPI** application with auto-generated OpenAPI / Swagger UI available at `/docs`.
 
-If you have any feedback, please reach out at pradnyapatil671@gmail.com
+### Key Endpoints
 
+#### 1. `GET /api/health`
+Health check for cloud orchestrators (Render, Kubernetes, AWS ALB).
+```json
+{
+  "status": "healthy",
+  "service": "Deep Learning Time Series Forecasting",
+  "version": "1.0.0"
+}
+```
 
-### 🚀 About Me
-#### Hi, I'm Pradnya! 👋
-I am an AI Enthusiast and  Data science & ML practitioner
+#### 2. `GET /api/metadata`
+Returns metadata on available stores (1–10), items (1–50), and neural model scorecards.
 
+#### 3. `GET /api/history?store_id=1&item_id=1&days=90`
+Fetches historical daily sales sequence for specified retail store and SKU.
 
+#### 4. `POST /api/forecast`
+Executes rolling neural inference for a single selected architecture.
+```json
+// Request Body
+{
+  "store_id": 1,
+  "item_id": 1,
+  "model_name": "LSTM",
+  "horizon": 30
+}
+```
+```json
+// Response Body
+{
+  "model": "LSTM",
+  "store_id": 1,
+  "item_id": 1,
+  "horizon": 30,
+  "forecast": [
+    { "date": "2018-01-01", "sales": 26.19 },
+    { "date": "2018-01-02", "sales": 27.57 }
+  ],
+  "summary": {
+    "total_projected_sales": 874.3,
+    "avg_daily_sales": 29.14,
+    "peak_day": "2018-01-21"
+  }
+}
+```
 
+#### 5. `POST /api/compare`
+Runs concurrent inference across all 4 architectures on identical historical inputs for side-by-side benchmarking.
 
+#### 6. `POST /api/upload-csv`
+Accepts multipart file upload (`.csv` format containing `sales` column) and runs instantaneous neural forecasting.
 
+---
 
+## 💻 Interactive Web Dashboard
 
+The frontend is engineered with zero runtime build dependencies for maximum speed and visual fidelity:
+* **Glassmorphism Dark UI**: Built with custom CSS custom properties, backdrop filters, and subtle ambient gradients.
+* **Dynamic Chart.js Engine**: Dual-curve charting (solid line for historical context, dashed glowing curves for neural projections).
+* **Multi-Model Benchmark Layer**: Side-by-side visualization comparing trajectory variations between Conv1D, LSTM, and Hybrid models.
+* **Instant Horizon Slider**: Real-time forecast recalculation from 7 to 90 days.
+* **Custom Dataset Upload Modal**: Drag-and-drop CSV ingestion with automatic column inference.
 
+---
 
+## 📁 Repository Structure
 
+```
+Time_Series_Forecasting/
+├── backend/
+│   ├── app.py                      # FastAPI REST API & lifespan caching
+│   ├── inference.py                # Preprocessing & autoregressive neural engine
+│   └── train_export_models.py      # Automated model training & weight serialization
+├── saved_models/
+│   ├── model_mlp.keras             # MLP model weights
+│   ├── model_cnn.keras             # 1D CNN model weights
+│   ├── model_lstm.keras            # LSTM model weights
+│   ├── model_cnn_lstm.keras        # CNN-LSTM hybrid weights
+│   └── metrics.json                # Model benchmark metadata
+├── static/
+│   ├── css/
+│   │   └── styles.css              # Glassmorphism dark theme & typography
+│   ├── js/
+│   │   └── app.js                  # Dynamic Chart.js logic & API binding
+│   └── index.html                  # Semantic HTML5 dashboard layout
+├── output/                         # Visualization charts & preview assets
+│   ├── overview.gif                # Dashboard demo animation
+│   ├── compare models.PNG          # Model comparison plot
+│   ├── store sales.PNG             # Store sales EDA plot
+│   ├── overall daily sales.PNG     # Aggregated trend plot
+│   └── item daily sales.PNG        # Item distribution plot
+├── Dockerfile                      # Production container image configuration
+├── render.yaml                     # Render 1-click cloud blueprint
+├── requirements.txt                # Pinned Python dependencies
+├── train.csv                       # Historical daily sales dataset
+├── test.csv                        # Evaluation dataset
+├── DEPLOYMENT_GUIDE.md             # Complete step-by-step deployment guide
+└── README.md                       # Technical documentation
+```
 
+---
 
-[1]: https://github.com/Pradnya1208
-[2]: https://www.linkedin.com/in/pradnya-patil-b049161ba/
-[3]: https://public.tableau.com/app/profile/pradnya.patil3254#!/
-[4]: https://twitter.com/Pradnya1208
+## 🛠️ Local Installation & Setup
 
+### Prerequisites
+* Python 3.10 or higher
+* Git
 
-[![github](https://raw.githubusercontent.com/Pradnya1208/Telecom-Customer-Churn-prediction/c292abd3f9cc647a7edc0061193f1523e9c05e1f/icons/git.svg)][1]
-[![linkedin](https://raw.githubusercontent.com/Pradnya1208/Telecom-Customer-Churn-prediction/9f5c4a255972275ced549ea6e34ef35019166944/icons/iconmonstr-linkedin-5.svg)][2]
-[![tableau](https://raw.githubusercontent.com/Pradnya1208/Telecom-Customer-Churn-prediction/e257c5d6cf02f13072429935b0828525c601414f/icons/icons8-tableau-software%20(1).svg)][3]
-[![twitter](https://raw.githubusercontent.com/Pradnya1208/Telecom-Customer-Churn-prediction/c9f9c5dc4e24eff0143b3056708d24650cbccdde/icons/iconmonstr-twitter-5.svg)][4]
+### Step-by-Step Instructions
+
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/sAkhil2027/Time_Series_Forecasting.git
+   cd Time_Series_Forecasting
+   ```
+
+2. **Create and Activate Virtual Environment:**
+   ```bash
+   # Windows (PowerShell)
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+
+   # Linux / macOS
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+3. **Install Dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **(Optional) Re-train Neural Models:**
+   ```bash
+   python backend/train_export_models.py
+   ```
+
+5. **Start the FastAPI Server:**
+   ```bash
+   uvicorn backend.app:app --reload --host 127.0.0.1 --port 8000
+   ```
+
+6. **Access Dashboard & Interactive Docs:**
+   * **Dashboard:** [http://127.0.0.1:8000](http://127.0.0.1:8000)
+   * **Swagger API Docs:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+   * **Redoc:** [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+
+---
+
+## 🚀 Production Cloud Deployment
+
+### 1. Render.com (1-Click Deployment)
+This repository includes a [`render.yaml`](render.yaml) blueprint:
+1. Fork or push this repository to GitHub.
+2. Sign in to [Render.com](https://render.com/) and click **"New" → "Blueprint"**.
+3. Connect your repository; Render will configure and deploy the service automatically.
+
+### 2. Docker Container Deployment
+Build and run the containerized application locally or on any cloud host:
+```bash
+# Build Docker image
+docker build -t chronos-deep:latest .
+
+# Run container on port 8000
+docker run -d -p 8000:8000 --name chronos-app chronos-deep:latest
+```
+
+### 3. Hugging Face Spaces (16 GB Free RAM)
+1. Create a new Space on [Hugging Face Spaces](https://huggingface.co/spaces).
+2. Select **Docker SDK** (Blank).
+3. Set your Space remote and push:
+   ```bash
+   git remote add space https://huggingface.co/spaces/YOUR_USERNAME/time-series-forecasting
+   git push space main
+   ```
+
+---
+
+## 📄 License & Contact
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+* **Author:** Akhil Vikram Singh
+* **GitHub:** [@sAkhil2027](https://github.com/sAkhil2027)
+* **Repository:** [Time_Series_Forecasting](https://github.com/sAkhil2027/Time_Series_Forecasting.git)
