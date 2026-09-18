@@ -36,3 +36,47 @@ def get_data():
         recent_df = df[df['date'] >= '2016-01-01'].copy()
         _data_cache = recent_df.sort_values('date')
     return _data_cache
+
+def load_model_cached(model_name: str):
+    global _models
+    model_name = model_name.upper().replace('_', '-')
+    if model_name in _models:
+        return _models[model_name]
+
+    filename_map = {
+        'MLP': 'model_mlp.keras',
+        'CNN': 'model_cnn.keras',
+        'LSTM': 'model_lstm.keras',
+        'CNN-LSTM': 'model_cnn_lstm.keras'
+    }
+
+    if model_name not in filename_map:
+        raise ValueError(f"Unknown model name: {model_name}")
+
+    model_file = os.path.join(SAVED_MODELS_DIR, filename_map[model_name])
+    if not os.path.exists(model_file):
+        raise FileNotFoundError(f"Model file not found at {model_file}.")
+
+    print(f"[Inference] Loading model {model_name} from {model_file}...")
+    model = tf.keras.models.load_model(model_file)
+    _models[model_name] = model
+    return model
+
+def format_input_for_model(sequence_30: np.ndarray, model_name: str) -> np.ndarray:
+    arr = np.array(sequence_30, dtype=np.float32).reshape(1, 30)
+    model_name = model_name.upper().replace('_', '-')
+
+    if model_name == 'MLP':
+        return arr
+    elif model_name in ['CNN', 'LSTM']:
+        return arr.reshape((1, 30, 1))
+    elif model_name == 'CNN-LSTM':
+        return arr.reshape((1, 2, 15, 1))
+    else:
+        raise ValueError(f"Unknown model name: {model_name}")
+
+def predict_single_step(model, sequence_30: np.ndarray, model_name: str) -> float:
+    inp = format_input_for_model(sequence_30, model_name)
+    pred = model(inp, training=False).numpy()
+    val = float(pred[0][0])
+    return max(0.0, val)
