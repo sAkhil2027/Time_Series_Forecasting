@@ -40,6 +40,46 @@ def get_data():
         _data_cache = recent_df.sort_values('date')
     return _data_cache
 
+def build_architecture(model_name: str):
+    """Reconstructs the model layer hierarchy in native Keras code."""
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Dense, Conv1D, MaxPooling1D, Flatten, LSTM, TimeDistributed, Input
+    
+    model_name = model_name.upper().replace('_', '-')
+    if model_name == 'MLP':
+        m = Sequential([
+            Input(shape=(30,)),
+            Dense(100, activation='relu'),
+            Dense(1)
+        ])
+    elif model_name == 'CNN':
+        m = Sequential([
+            Input(shape=(30, 1)),
+            Conv1D(filters=64, kernel_size=2, activation='relu'),
+            MaxPooling1D(pool_size=2),
+            Flatten(),
+            Dense(50, activation='relu'),
+            Dense(1)
+        ])
+    elif model_name == 'LSTM':
+        m = Sequential([
+            Input(shape=(30, 1)),
+            LSTM(50, activation='relu'),
+            Dense(1)
+        ])
+    elif model_name == 'CNN-LSTM':
+        m = Sequential([
+            Input(shape=(2, 15, 1)),
+            TimeDistributed(Conv1D(filters=64, kernel_size=1, activation='relu')),
+            TimeDistributed(MaxPooling1D(pool_size=2)),
+            TimeDistributed(Flatten()),
+            LSTM(50, activation='relu'),
+            Dense(1)
+        ])
+    else:
+        raise ValueError(f"Unknown model name: {model_name}")
+    return m
+
 def load_model_cached(model_name: str):
     global _models
     model_name = model_name.upper().replace('_', '-')
@@ -57,11 +97,46 @@ def load_model_cached(model_name: str):
         raise ValueError(f"Unknown model name: {model_name}")
 
     model_file = os.path.join(SAVED_MODELS_DIR, filename_map[model_name])
-    if not os.path.exists(model_file):
-        raise FileNotFoundError(f"Model file not found at {model_file}. Has training completed?")
+    weights_file = os.path.join(SAVED_MODELS_DIR, f"model_{model_name.lower().replace('-', '_')}.weights.h5")
 
-    print(f"[Inference] Loading model {model_name} from {model_file}...")
-    model = tf.keras.models.load_model(model_file)
+    print(f"[Inference] Loading model {model_name}...")
+    model = None
+
+    # Strategy 1: Build architecture and load weights from .weights.h5 (100% version-safe)
+    if os.path.exists(weights_file):
+        try:
+            m = build_architecture(model_name)
+            m.load_weights(weights_file)
+            model = m
+            print(f"[Inference] Loaded {model_name} from weights file {weights_file}")
+        except Exception as e:
+            print(f"[Inference Notice] Weights loading notice: {e}")
+
+    # Strategy 2: Load model with compile=False to bypass optimizer/initializer mismatches
+    if model is None and os.path.exists(model_file):
+        try:
+            model = tf.keras.models.load_model(model_file, compile=False)
+            print(f"[Inference] Loaded {model_name} via load_model(compile=False)")
+        except Exception as e:
+            print(f"[Inference Notice] load_model notice: {e}")
+
+    # Strategy 3: Build architecture and load weights from .keras archive
+    if model is None and os.path.exists(model_file):
+        try:
+            m = build_architecture(model_name)
+            m.load_weights(model_file)
+            model = m
+            print(f"[Inference] Loaded {model_name} weights into rebuilt architecture")
+        except Exception as e:
+            print(f"[Inference Notice] Rebuilt architecture load_weights notice: {e}")
+
+    if model is None:
+        raise FileNotFoundError(f"Could not load {model_name} model from {SAVED_MODELS_DIR}")
+
+    # Warmup forward pass
+    dummy = format_input_for_model(np.zeros(30, dtype=np.float32), model_name)
+    _ = model(dummy, training=False)
+
     _models[model_name] = model
     return model
 
